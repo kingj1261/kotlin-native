@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.languageVersionSettings
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.psi2ir.Psi2IrConfiguration
 import org.jetbrains.kotlin.psi2ir.Psi2IrTranslator
@@ -69,13 +68,12 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
 
         val forwardDeclarationsModuleDescriptor = context.moduleDescriptor.allDependencyModules.firstOrNull { it.isForwardDeclarationModule }
 
-        val deserializer = IrModuleDeserialization(
-            context as LoggingContext,
+        val deserializer = KonanIrModuleDeserializer(
             context.moduleDescriptor,
+            context as LoggingContext,
             generatorContext.irBuiltIns,
             generatorContext.symbolTable,
-            forwardDeclarationsModuleDescriptor,
-            { moduleDescriptor: ModuleDescriptor, uniqId: UniqId -> moduleToLibrary[moduleDescriptor]!!.irDeclaration(uniqId.index, uniqId.isLocal) }
+            forwardDeclarationsModuleDescriptor
         )
 
         val irModules = context.moduleDescriptor.allDependencyModules.map {
@@ -83,7 +81,7 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
             if (library == null) {
                 return@map null
             }
-            deserializer.deserializedIrModule(it, library.wholeIr)
+            deserializer.deserializeIrModule(it, library.wholeIr)
         }.filterNotNull()
 
         val symbols = KonanSymbols(context, generatorContext.symbolTable, generatorContext.symbolTable.lazyWrapper)
@@ -94,7 +92,6 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
         }
 
         context.irModule = module
-
         context.ir.symbols = symbols
 
 //        validateIrModule(context, module)
@@ -116,7 +113,7 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
 
     phaser.phase(KonanPhase.SERIALIZER) {
         val declarationTable = DeclarationTable(context.irModule!!.irBuiltins, DescriptorTable())
-        val serializedIr = IrModuleSerialization(context, declarationTable/*, onlyForInlines = false*/).serializedIrModule(context.irModule!!)
+        val serializedIr = IrModuleSerializer(context, declarationTable/*, onlyForInlines = false*/).serializedIrModule(context.irModule!!)
 
         val serializer = KonanSerializationUtil(context, context.config.configuration.get(CommonConfigurationKeys.METADATA_VERSION)!!, declarationTable)
         context.serializedLinkData =

@@ -20,12 +20,7 @@ import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.common.ir.DeclarationFactory
 import org.jetbrains.kotlin.backend.common.ir.ir2string
-import org.jetbrains.kotlin.backend.konan.descriptors.findPackage
-import org.jetbrains.kotlin.backend.konan.descriptors.findTopLevelDescriptor
-import org.jetbrains.kotlin.backend.konan.descriptors.isForwardDeclarationModule
-import org.jetbrains.kotlin.backend.konan.ir.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -35,12 +30,10 @@ import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.*
-import org.jetbrains.kotlin.ir.symbols.impl.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.types.impl.*
 import org.jetbrains.kotlin.ir.util.IrDeserializer
 import org.jetbrains.kotlin.ir.util.SymbolTable
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.metadata.KonanIr
 import org.jetbrains.kotlin.metadata.KonanIr.IrConst.ValueCase.*
@@ -51,125 +44,23 @@ import org.jetbrains.kotlin.metadata.KonanIr.IrType.KindCase.*
 import org.jetbrains.kotlin.metadata.KonanIr.IrTypeArgument.KindCase.STAR
 import org.jetbrains.kotlin.metadata.KonanIr.IrTypeArgument.KindCase.TYPE
 import org.jetbrains.kotlin.metadata.KonanIr.IrVarargElement.VarargElementCase
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.resolve.descriptorUtil.module
-import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedCallableMemberDescriptor
-import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedClassDescriptor
-import org.jetbrains.kotlin.serialization.konan.KonanSerializerProtocol
 import org.jetbrains.kotlin.types.Variance
 
-class IrModuleDeserialization(val logger: LoggingContext, val currentModule: ModuleDescriptor, val builtIns: IrBuiltIns, val symbolTable: SymbolTable, val forwardModuleDescriptor: ModuleDescriptor?, val reader: (ModuleDescriptor, UniqId) -> ByteArray) : IrDeserializer {
+// TODO: This code still has some uses of descriptors:
+// 1. We use descriptors as keys for symbolTable -- probably symbol table related code should be refactored out from
+// the deserializer.
+// 2. Properties use descriptors but not symbols -- that causes lots of assymmetry all around.
+// 3. Declarations are provided with wrapped descriptors. That is probably a legitimate descriptor use.
 
-    private val loopIndex = mutableMapOf<Int, IrLoop>()
+abstract class IrModuleDeserializer(
+    val logger: LoggingContext,
+    val builtIns: IrBuiltIns,
+    val symbolTable: SymbolTable
+) : IrDeserializer {
 
-    private val allKnownOrigins =
-        IrDeclarationOrigin::class.nestedClasses.toList() + DeclarationFactory.FIELD_FOR_OUTER_THIS::class
-    val originIndex = allKnownOrigins.map { it.objectInstance as IrDeclarationOriginImpl }.associateBy { it.name }
-    val irrelevantOrigin = object : IrDeclarationOriginImpl("irrelevant") {}
-    private var deserializedModuleDescriptor: ModuleDescriptor? = null
-
-    val deserializedSymbols = mutableMapOf<UniqIdKey, IrSymbol>()
-    val reachableTopLevels = mutableSetOf<UniqIdKey>()
-    val deserializedTopLevels = mutableSetOf<UniqIdKey>()
-    val forwardDeclarations = mutableSetOf<IrSymbol>()
-    val resolvedForwardDeclarations = mutableMapOf<UniqIdKey, UniqIdKey>()
-    val descriptorReferenceDeserializer = DescriptorReferenceDeserializer(currentModule, resolvedForwardDeclarations)
-
-    init {
-        var currentIndex = 0L
-        builtIns.knownBuiltins.forEach {
-            deserializedSymbols.put(UniqIdKey(null, UniqId(currentIndex, isLocal = false)), it.symbol)
-            assert(symbolTable.referenceSimpleFunction(it.descriptor) == it.symbol)
-            currentIndex++
-        }
-    }
-
-    private fun referenceDeserializedSymbol(proto: KonanIr.IrSymbol, descriptor: DeclarationDescriptor?): IrSymbol = when (proto.kind) {
-        KonanIr.IrSymbolKind.ANONYMOUS_INIT_SYMBOL ->
-            IrAnonymousInitializerSymbolImpl(
-                descriptor as ClassDescriptor?
-                    ?: WrappedClassDescriptor()
-            )
-        KonanIr.IrSymbolKind.CLASS_SYMBOL ->
-            symbolTable.referenceClass(
-                descriptor as ClassDescriptor?
-                    ?: WrappedClassDescriptor()
-            )
-        KonanIr.IrSymbolKind.CONSTRUCTOR_SYMBOL ->
-            symbolTable.referenceConstructor(
-                descriptor as ClassConstructorDescriptor?
-                    ?: WrappedClassConstructorDescriptor()
-            )
-        KonanIr.IrSymbolKind.TYPE_PARAMETER_SYMBOL ->
-            symbolTable.referenceTypeParameter(
-                descriptor as TypeParameterDescriptor?
-                    ?: WrappedTypeParameterDescriptor()
-            )
-        KonanIr.IrSymbolKind.ENUM_ENTRY_SYMBOL ->
-            symbolTable.referenceEnumEntry(
-                descriptor as ClassDescriptor?
-                    ?: WrappedEnumEntryDescriptor()
-            )
-        KonanIr.IrSymbolKind.STANDALONE_FIELD_SYMBOL ->
-            IrFieldSymbolImpl(WrappedFieldDescriptor())
-
-        KonanIr.IrSymbolKind.FIELD_SYMBOL ->
-            symbolTable.referenceField(
-                descriptor as PropertyDescriptor?
-                    ?: WrappedPropertyDescriptor()
-            )
-        KonanIr.IrSymbolKind.FUNCTION_SYMBOL ->
-            symbolTable.referenceSimpleFunction(
-                descriptor as FunctionDescriptor?
-                    ?: WrappedSimpleFunctionDescriptor()
-            )
-        KonanIr.IrSymbolKind.VARIABLE_SYMBOL ->
-            IrVariableSymbolImpl(
-                descriptor as VariableDescriptor?
-                    ?: WrappedVariableDescriptor()
-            )
-        KonanIr.IrSymbolKind.VALUE_PARAMETER_SYMBOL ->
-            IrValueParameterSymbolImpl(
-                descriptor as ParameterDescriptor?
-                    ?: WrappedValueParameterDescriptor()
-            )
-        KonanIr.IrSymbolKind.RECEIVER_PARAMETER_SYMBOL ->
-            IrValueParameterSymbolImpl(
-                descriptor as ParameterDescriptor? ?: WrappedReceiverParameterDescriptor()
-            )
-        else -> TODO("Unexpected classifier symbol kind: ${proto.kind}")
-    }
-
-    fun deserializeIrSymbol(proto: KonanIr.IrSymbol): IrSymbol {
-        val key = proto.uniqId.uniqIdKey(deserializedModuleDescriptor!!)
-        val topLevelKey = proto.topLevelUniqId.uniqIdKey(deserializedModuleDescriptor!!)
-
-        if (!deserializedTopLevels.contains(topLevelKey)) reachableTopLevels.add(topLevelKey)
-
-        val symbol = deserializedSymbols.getOrPut(key) {
-            val descriptor = if (proto.hasDescriptorReference()) {
-                descriptorReferenceDeserializer.deserializeDescriptorReference(proto.descriptorReference)
-            } else {
-                null
-            }
-
-            resolvedForwardDeclarations[key]?.let {
-                if (!deserializedTopLevels.contains(it)) reachableTopLevels.add(it) // Assuming forward declarations are always top levels.
-            }
-
-            referenceDeserializedSymbol(proto, descriptor)
-        }
-
-        if (symbol.descriptor is ClassDescriptor &&
-            symbol.descriptor !is WrappedClassDescriptor &&
-            symbol.descriptor.module.isForwardDeclarationModule
-        ) {
-            forwardDeclarations.add(symbol)
-        }
-
-        return symbol
-    }
+    abstract fun deserializeIrSymbol(proto: KonanIr.IrSymbol): IrSymbol
+    abstract fun deserializeDescriptorReference(proto: KonanIr.DescriptorReference): DeclarationDescriptor
 
     private fun deserializeTypeArguments(proto: KonanIr.TypeArguments): List<IrType> {
         logger.log { "### deserializeTypeArguments" }
@@ -206,7 +97,8 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
     fun deserializeSimpleType(proto: KonanIr.IrSimpleType): IrSimpleType {
         val arguments = proto.argumentList.map { deserializeIrTypeArgument(it) }
         val annotations = deserializeAnnotations(proto.base.annotations)
-        val symbol = deserializeIrSymbol(proto.classifier) as? IrClassifierSymbol ?: error("could not convert sym to ClassifierSym ${proto.classifier.kind} ${proto.classifier.uniqId.index} ${proto.classifier.uniqId.isLocal}")
+        val symbol = deserializeIrSymbol(proto.classifier) as? IrClassifierSymbol
+            ?: error("could not convert sym to ClassifierSym ${proto.classifier.kind} ${proto.classifier.uniqId.index} ${proto.classifier.uniqId.isLocal}")
         logger.log { "deserializeSimpleType: symbol=$symbol" }
         val result = IrSimpleTypeImpl(
             null,
@@ -650,6 +542,8 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
         return IrWhenImpl(start, end, type, null, branches)
     }
 
+    private val loopIndex = mutableMapOf<Int, IrLoop>()
+
     private fun deserializeLoop(proto: KonanIr.Loop, loop: IrLoopBase): IrLoopBase {
         val loopId = proto.loopId
         loopIndex.getOrPut(loopId) { loop }
@@ -810,7 +704,6 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
         val name = Name.identifier(proto.name)
         val variance = deserializeIrTypeVariance(proto.variance)
 
-
         val parameter = symbolTable.declareGlobalTypeParameter(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irrelevantOrigin,
             symbol.descriptor, { symbol ->
                 IrTypeParameterImpl(start, end, origin, symbol, name, proto.index, proto.isReified, variance)
@@ -862,12 +755,12 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
                 varargElementType,
                 proto.isCrossinline,
                 proto.isNoinline
-        ).apply {
+            ).apply {
                 defaultValue = if (proto.hasDefaultValue()) {
                     val expression = deserializeExpression(proto.defaultValue)
                     IrExpressionBodyImpl(expression)
                 } else null
-        }
+            }
 
         return parameter
     }
@@ -1108,7 +1001,7 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
         } else null
 
         val descriptor = backingField?.descriptor
-            ?: if (proto.hasDescriptor()) descriptorReferenceDeserializer.deserializeDescriptorReference(proto.descriptor) as PropertyDescriptor else null
+            ?: if (proto.hasDescriptor()) deserializeDescriptorReference(proto.descriptor) as PropertyDescriptor else null
                 ?: WrappedPropertyDescriptor()
 
         val property = IrPropertyImpl(
@@ -1155,7 +1048,6 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
             if (descriptor is WrappedSimpleFunctionDescriptor) descriptor.bind(it)
             symbolTable.declareSimpleFunction(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irrelevantOrigin,
                 descriptor, { symbol -> it })
-
         }
 
         return property
@@ -1170,7 +1062,12 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
         return IrErrorDeclarationImpl(start, end, WrappedClassDescriptor())
     }
 
-    private fun deserializeDeclaration(proto: KonanIr.IrDeclaration, parent: IrDeclarationParent?): IrDeclaration {
+    private val allKnownOrigins =
+        IrDeclarationOrigin::class.nestedClasses.toList() + DeclarationFactory.FIELD_FOR_OUTER_THIS::class
+    val originIndex = allKnownOrigins.map { it.objectInstance as IrDeclarationOriginImpl }.associateBy { it.name }
+    val irrelevantOrigin = object : IrDeclarationOriginImpl("irrelevant") {}
+
+    protected fun deserializeDeclaration(proto: KonanIr.IrDeclaration, parent: IrDeclarationParent?): IrDeclaration {
 
         val start = proto.coordinates.startOffset
         val end = proto.coordinates.endOffset
@@ -1230,168 +1127,8 @@ class IrModuleDeserialization(val logger: LoggingContext, val currentModule: Mod
                 is IrSimpleFunction -> (descriptor as WrappedSimpleFunctionDescriptor).bind(declaration)
             }
         }
-
-        //deserializedDeclarations.put(descriptor, declaration)
         logger.log { "### Deserialized declaration: ${descriptor} -> ${ir2string(declaration)}" }
 
         return declaration
     }
-
-    val ByteArray.codedInputStream: org.jetbrains.kotlin.protobuf.CodedInputStream
-        get() {
-            val codedInputStream = org.jetbrains.kotlin.protobuf.CodedInputStream.newInstance(this)
-            codedInputStream.setRecursionLimit(65535) // The default 64 is blatantly not enough for IR.
-            return codedInputStream
-        }
-
-    val reversedFileIndex = mutableMapOf<UniqIdKey, IrFile>()
-    val UniqIdKey.nonNullModuleDescriptor get() =
-        this.moduleDescriptor ?: reversedFileIndex[this]?.packageFragmentDescriptor?.containingDeclaration
-
-    fun deserializeTopLevelDeclaration(uniqIdKey: UniqIdKey): IrDeclaration {
-        val proto = loadTopLevelDeclarationProto(uniqIdKey)
-        return deserializeDeclaration(proto, reversedFileIndex[uniqIdKey]!!)
-    }
-
-    fun loadTopLevelDeclarationProto(uniqIdKey: UniqIdKey): KonanIr.IrDeclaration {
-        val stream = reader(uniqIdKey.nonNullModuleDescriptor!!, uniqIdKey.uniqId).codedInputStream
-        return KonanIr.IrDeclaration.parseFrom(stream, KonanSerializerProtocol.extensionRegistry)
-    }
-
-    private fun findDeserializedDeclarationForDescriptor(descriptor: DeclarationDescriptor): DeclarationDescriptor? {
-        val topLevelDescriptor = descriptor.findTopLevelDescriptor()
-
-        if (topLevelDescriptor.module.isForwardDeclarationModule) return null
-
-        if (topLevelDescriptor !is DeserializedClassDescriptor && topLevelDescriptor !is DeserializedCallableMemberDescriptor) {
-            return null
-        }
-
-        val descriptorUniqId = topLevelDescriptor.getUniqId()
-            ?: error("could not get descriptor uniq id for $topLevelDescriptor")
-        val uniqId = UniqId(descriptorUniqId.index, isLocal = false)
-
-        val topLevelKey = UniqIdKey(topLevelDescriptor.module, uniqId)
-
-        reachableTopLevels.add(topLevelKey)
-
-        do {
-            val key = reachableTopLevels.first()
-
-            if (deserializedSymbols[key]?.isBound == true) {
-                reachableTopLevels.remove(key)
-                continue
-            }
-
-            val previousModuleDescriptor = deserializedModuleDescriptor
-            deserializedModuleDescriptor = key.nonNullModuleDescriptor
-
-            if (deserializedModuleDescriptor == null) {
-                deserializedModuleDescriptor = previousModuleDescriptor
-                reachableTopLevels.remove(key)
-                deserializedTopLevels.add(key)
-                continue
-            }
-
-            val reachable = deserializeTopLevelDeclaration(key)
-
-            deserializedModuleDescriptor = previousModuleDescriptor
-
-            reversedFileIndex[key]!!.declarations.add(reachable)
-            reachableTopLevels.remove(key)
-            deserializedTopLevels.add(key)
-        } while (reachableTopLevels.isNotEmpty())
-
-        return topLevelDescriptor
-    }
-
-    override fun findDeserializedDeclaration(symbol: IrSymbol): IrDeclaration? {
-
-        if (!symbol.isBound) {
-            val topLevelDesecriptor = findDeserializedDeclarationForDescriptor(symbol.descriptor)
-            if (topLevelDesecriptor == null) return null
-        }
-
-        assert(symbol.isBound) {
-            println("findDeserializedDeclaration: symbol ${symbol} is unbound, descriptor = ${symbol.descriptor}, hash = ${symbol.descriptor.hashCode()}")
-        }
-
-        return symbol.owner as IrDeclaration
-    }
-
-    override fun findDeserializedDeclaration(propertyDescriptor: PropertyDescriptor): IrProperty? {
-        val topLevelDesecriptor = findDeserializedDeclarationForDescriptor(propertyDescriptor)
-        if (topLevelDesecriptor == null) return null
-
-        return symbolTable.propertyTable[propertyDescriptor]
-            ?: error("findDeserializedDeclaration: property descriptor $propertyDescriptor} is not present in propertyTable after deserialization}")
-    }
-
-    override fun declareForwardDeclarations() {
-        if (forwardModuleDescriptor == null) return
-
-        val packageFragments = forwardDeclarations.map { it.descriptor.findPackage() }.distinct()
-
-        val files = packageFragments.map { packageFragment ->
-            val symbol = IrFileSymbolImpl(packageFragment)
-            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("<forward declarations pseudo-file>"), symbol)
-            val symbols = forwardDeclarations
-                .filter { !it.isBound }
-                .filter { it.descriptor.findPackage() == packageFragment }
-            val declarations = symbols.map {
-
-                val declaration = symbolTable.declareClass(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irrelevantOrigin,
-                    it.descriptor as ClassDescriptor,
-                    { symbol: IrClassSymbol -> IrClassImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irrelevantOrigin, symbol) }
-                )
-                declaration
-
-            }
-            file.declarations.addAll(declarations)
-            file
-        }
-        IrModuleFragmentImpl(forwardModuleDescriptor, builtIns, files)
-    }
-
-    fun deserializeIrFile(fileProto: KonanIr.IrFile, moduleDescriptor: ModuleDescriptor, deserializeAllDeclarations: Boolean): IrFile {
-        val fileEntry = NaiveSourceBasedFileEntryImpl(fileProto.fileEntry.name)
-
-        // TODO: we need to store "" in protobuf, I suppose. Or better yet, reuse fqname storage from metadata.
-        val fqName = if (fileProto.fqName == "<root>") FqName.ROOT else FqName(fileProto.fqName)
-
-        val packageFragmentDescriptor = EmptyPackageFragmentDescriptor(moduleDescriptor, fqName)
-
-        val symbol = IrFileSymbolImpl(packageFragmentDescriptor)
-        val file = IrFileImpl(fileEntry, symbol, fqName)
-
-        fileProto.declarationIdList.forEach {
-            val uniqIdKey = it.uniqIdKey(moduleDescriptor)
-            reversedFileIndex.put(uniqIdKey, file)
-
-            if (deserializeAllDeclarations) {
-                file.declarations.add(deserializeTopLevelDeclaration(uniqIdKey))
-            }
-        }
-
-        return file
-    }
-
-    fun deserializeIrModule(proto: KonanIr.IrModule, moduleDescriptor: ModuleDescriptor, deserializeAllDeclarations: Boolean): IrModuleFragment {
-
-        deserializedModuleDescriptor = moduleDescriptor
-
-        val files = proto.fileList.map {
-            deserializeIrFile(it, moduleDescriptor, deserializeAllDeclarations)
-
-        }
-        val module = IrModuleFragmentImpl(moduleDescriptor, builtIns, files)
-        module.patchDeclarationParents(null)
-        return module
-    }
-
-    fun deserializedIrModule(moduleDescriptor: ModuleDescriptor, byteArray: ByteArray, deserializeAllDeclarations: Boolean = false): IrModuleFragment {
-        val proto = KonanIr.IrModule.parseFrom(byteArray.codedInputStream, KonanSerializerProtocol.extensionRegistry)
-        return deserializeIrModule(proto, moduleDescriptor, deserializeAllDeclarations)
-    }
 }
-

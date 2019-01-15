@@ -42,7 +42,7 @@ import org.jetbrains.kotlin.ir.types.impl.IrTypeBase
 import org.jetbrains.kotlin.metadata.KonanIr
 import org.jetbrains.kotlin.types.Variance
 
-internal class IrModuleSerialization(
+internal class IrModuleSerializer(
     val logger: LoggingContext,
     val declarationTable: DeclarationTable//,
 ) {
