@@ -115,7 +115,7 @@ internal class KonanDeserializedModuleDescriptorFactoryImpl(
                 NullFlexibleTypeDeserializer,
                 emptyList(),
                 notFoundClasses,
-                ContractDeserializerImpl(configuration),
+                ContractDeserializerImpl(configuration, storageManager),
                 extensionRegistryLite = KonanSerializerProtocol.extensionRegistry)
 
         for (packageFragment in deserializedPackageFragments) {

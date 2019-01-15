@@ -196,6 +196,7 @@ class KonanIrModuleDeserializer(
 
         reachableTopLevels.add(topLevelKey)
 
+        // TODO: This is a mess. Cleanup!
         do {
             val key = reachableTopLevels.first()
 
