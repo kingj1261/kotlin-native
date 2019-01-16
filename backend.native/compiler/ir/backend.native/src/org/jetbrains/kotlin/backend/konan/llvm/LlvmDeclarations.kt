@@ -203,8 +203,6 @@ private class DeclarationsGeneratorVisitor(override val context: Context) :
     }
 
     override fun visitClass(declaration: IrClass) {
-       // println("### createClassDeclarations")
-       // println("   declaration = $declaration ${declaration.name}")
        this.classes[declaration] = createClassDeclarations(declaration)
 
         super.visitClass(declaration)

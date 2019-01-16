@@ -295,7 +295,6 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
 
     // TODO: consider eliminating mutable state
     private var currentCodeContext: CodeContext = TopLevelCodeContext
-        //set(value: CodeContext) { println(value); field = value }
 
     private val intrinsicGeneratorEnvironment = object : IntrinsicGeneratorEnvironment {
         override val codegen: CodeGenerator
@@ -1983,8 +1982,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
      */
     private fun evaluateExplicitArgs(expression: IrMemberAccessExpression): List<LLVMValueRef> {
         val evaluatedArgs = expression.getArguments().map { (param, argExpr) ->
-            val evaluated = evaluateExpression(argExpr)
-            param to evaluated
+            param to evaluateExpression(argExpr)
         }.toMap()
 
         val allValueParameters = expression.descriptor.allParameters

@@ -469,9 +469,6 @@ internal class TestProcessor (val context: KonanBackendContext) {
 
     private val IrClass.ignored: Boolean get() = descriptor.annotations.hasAnnotation(IGNORE_FQ_NAME)
 
-    //private val IrClassSymbol.ignored: Boolean get() = descriptor.annotations.hasAnnotation(IGNORE_FQ_NAME)
-    //private val IrClassSymbol.isObject: Boolean get() = descriptor.kind == ClassKind.OBJECT
-
     /**
      * Builds a test suite class representing a test class (any class in the original IrFile with method(s)
      * annotated with @Test). The test suite class is a subclass of ClassTestSuite<T> where T is the test class.

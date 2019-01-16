@@ -31,11 +31,7 @@ internal class KonanLower(val context: Context, val parentPhaser: PhaseManager) 
 
         // Phases to run against a file.
         irModule.files.forEach {
-            try {
-                lowerFile(it, PhaseManager(context, parentPhaser))
-            } catch(e: Throwable) {
-                e.printStackTrace()
-            }
+            lowerFile(it, PhaseManager(context, parentPhaser))
         }
 
         irModule.checkDeclarationParents()
@@ -71,10 +67,10 @@ internal class KonanLower(val context: Context, val parentPhaser: PhaseManager) 
 
         val symbolTable = context.ir.symbols.symbolTable
 
-    //    do {
-      //      @Suppress("DEPRECATION")
-        //    irModule.replaceUnboundSymbols(context)
-        //} while (symbolTable.unboundClasses.isNotEmpty())
+        // do {
+        //      @Suppress("DEPRECATION")
+        //      irModule.replaceUnboundSymbols(context)
+        // } while (symbolTable.unboundClasses.isNotEmpty())
 
         irModule.patchDeclarationParents()
 

@@ -8,9 +8,7 @@
 package org.jetbrains.kotlin.backend.konan.lower
 
 import org.jetbrains.kotlin.backend.common.*
-import org.jetbrains.kotlin.backend.common.descriptors.WrappedVariableDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.explicitParameters
-import org.jetbrains.kotlin.backend.common.ir.ir2stringWhole
 import org.jetbrains.kotlin.backend.common.lower.CoroutineIntrinsicLambdaOrigin
 import org.jetbrains.kotlin.backend.common.ir.createTemporaryVariableWithWrappedDescriptor
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
@@ -19,12 +17,9 @@ import org.jetbrains.kotlin.backend.konan.descriptors.isFunctionInvoke
 import org.jetbrains.kotlin.backend.konan.descriptors.needsInlining
 import org.jetbrains.kotlin.backend.konan.descriptors.propertyIfAccessor
 import org.jetbrains.kotlin.backend.konan.descriptors.resolveFakeOverride
-//import org.jetbrains.kotlin.backend.konan.ir.DeserializerDriver
-import org.jetbrains.kotlin.backend.konan.ir.ir2stringWholezzz
 import org.jetbrains.kotlin.backend.konan.irasdescriptors.constructedClass
 import org.jetbrains.kotlin.backend.konan.irasdescriptors.isInlineParameter
 import org.jetbrains.kotlin.config.languageVersionSettings
-import org.jetbrains.kotlin.backend.konan.llvm.symbolName
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -39,17 +34,10 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrReturnableBlockSymbolImpl
 import org.jetbrains.kotlin.ir.types.toKotlinType
 import org.jetbrains.kotlin.ir.util.getArguments
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.classifierOrNull
-import org.jetbrains.kotlin.ir.types.toKotlinType
-import org.jetbrains.kotlin.ir.util.getArguments
-import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.util.referenceFunction
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
-import org.jetbrains.kotlin.resolve.inline.InlineUtil
 import org.jetbrains.kotlin.types.TypeConstructor
 import org.jetbrains.kotlin.types.TypeProjection
 import org.jetbrains.kotlin.types.TypeProjectionImpl
@@ -187,11 +175,6 @@ internal class FunctionInlining(val context: Context): IrElementTransformerWithC
         return inliner.inline()
     }
 
-//        println()
-//        println("BEFORE RECURSIVE INLINE: ${ir2stringWholezzz(functionDeclaration.first)}")
-//        println()
-
-
     private fun getFunctionDeclaration(descriptor: FunctionDescriptor): Pair<IrFunction, Boolean>? =
             when {
                 descriptor.isBuiltInIntercepted(context.config.configuration.languageVersionSettings) ->
@@ -205,9 +188,7 @@ internal class FunctionInlining(val context: Context): IrElementTransformerWithC
 
                 else ->
                     context.ir.originalModuleIndex.functions[descriptor]?.let { it to false }
-                            //?: deserializer.deserializeInlineBody(descriptor)?.let { it as IrFunction to true }
                             ?: context.ir.symbols.symbolTable.referenceFunction(descriptor).owner to true
-
             }
 }
 

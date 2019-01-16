@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.types.KotlinType
 
 internal class KonanSerializerExtension(val context: Context, override val metadataVersion: BinaryVersion,
                                         val sourceFileMap: SourceFileMap, val declarationTable: DeclarationTable) :
-        KotlinSerializerExtensionBase(KonanSerializerProtocol)/*, IrAwareExtension*/ {
+        KotlinSerializerExtensionBase(KonanSerializerProtocol) {
 
     override val stringTable = KonanStringTable()
     override fun shouldUseTypeTable(): Boolean = true
@@ -32,7 +32,7 @@ internal class KonanSerializerExtension(val context: Context, override val metad
     }
 
     override fun serializeType(type: KotlinType, proto: ProtoBuf.Type.Builder) {
-        // TODO: For debugging purpose we store the debugIndex
+        // TODO: For debugging purpose we store the textual
         // representation of serialized types.
         // To be removed.
         proto.setExtension(KonanProtoBuf.typeText, type.toString())

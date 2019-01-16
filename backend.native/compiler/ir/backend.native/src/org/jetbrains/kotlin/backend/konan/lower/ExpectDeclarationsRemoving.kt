@@ -42,8 +42,6 @@ internal class ExpectDeclarationsRemoving(val context: Context) : FileLoweringPa
     }
 }
 
-
-
 internal class ExpectToActualDefaultValueCopier(val context: Context) : FileLoweringPass {
 
     override fun lower(irFile: IrFile) {

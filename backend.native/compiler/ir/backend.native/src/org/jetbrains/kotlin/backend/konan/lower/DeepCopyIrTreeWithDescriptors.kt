@@ -258,10 +258,6 @@ internal class DeepCopyIrTreeWithDescriptors(val targetDescriptor: FunctionDescr
         //---------------------------------------------------------------------//
 
         override fun visitClassNew(declaration: IrClass) {
-
-            println("### visitClassNew: ${declaration.name.toString()}")
-            println(ir2stringWhole(declaration))
-
             val oldDescriptor = declaration.descriptor
             val newDescriptor = copyClassDescriptor(oldDescriptor)
             descriptorSubstituteMap[oldDescriptor] = newDescriptor
