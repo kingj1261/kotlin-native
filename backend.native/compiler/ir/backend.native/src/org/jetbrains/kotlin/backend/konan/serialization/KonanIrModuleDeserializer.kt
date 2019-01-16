@@ -256,7 +256,7 @@ class KonanIrModuleDeserializer(
 
         val files = packageFragments.map { packageFragment ->
             val symbol = IrFileSymbolImpl(packageFragment)
-            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("<forward declarations pseudo-file>"), symbol)
+            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("forward declarations pseudo-file"), symbol)
             val symbols = forwardDeclarations
                 .filter { !it.isBound }
                 .filter { it.descriptor.findPackage() == packageFragment }
