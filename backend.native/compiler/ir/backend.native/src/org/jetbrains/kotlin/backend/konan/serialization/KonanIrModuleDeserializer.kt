@@ -144,7 +144,7 @@ class KonanIrModuleDeserializer(
         }
 
         if (symbol.descriptor is ClassDescriptor &&
-            symbol.descriptor !is WrappedClassDescriptor &&
+            symbol.descriptor !is WrappedDeclarationDescriptor<*> &&
             symbol.descriptor.module.isForwardDeclarationModule
         ) {
             forwardDeclarations.add(symbol)
