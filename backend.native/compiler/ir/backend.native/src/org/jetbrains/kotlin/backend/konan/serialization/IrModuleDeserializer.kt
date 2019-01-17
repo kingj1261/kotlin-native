@@ -98,7 +98,8 @@ abstract class IrModuleDeserializer(
         val arguments = proto.argumentList.map { deserializeIrTypeArgument(it) }
         val annotations = deserializeAnnotations(proto.base.annotations)
         val symbol = deserializeIrSymbol(proto.classifier) as? IrClassifierSymbol
-            ?: error("could not convert sym to ClassifierSym ${proto.classifier.kind} ${proto.classifier.uniqId.index} ${proto.classifier.uniqId.isLocal}")
+            //?: error("could not convert sym to ClassifierSym ${proto.classifier.kind} ${proto.classifier.uniqId.index} ${proto.classifier.uniqId.isLocal}")
+            ?: error("could not convert sym to ClassifierSymbol")
         logger.log { "deserializeSimpleType: symbol=$symbol" }
         val result = IrSimpleTypeImpl(
             null,
