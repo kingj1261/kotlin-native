@@ -24,10 +24,10 @@ class DescriptorTable {
 // TODO: We don't manage id clashes anyhow now.
 class DeclarationTable(val builtIns: IrBuiltIns, val descriptorTable: DescriptorTable) {
 
-    val table = mutableMapOf<IrDeclaration, UniqId>()
+    private val table = mutableMapOf<IrDeclaration, UniqId>()
     val debugIndex = mutableMapOf<UniqId, String>()
     val descriptors = descriptorTable
-    var currentIndex = 0L
+    private var currentIndex = 0L
 
     init {
         builtIns.knownBuiltins.forEach {

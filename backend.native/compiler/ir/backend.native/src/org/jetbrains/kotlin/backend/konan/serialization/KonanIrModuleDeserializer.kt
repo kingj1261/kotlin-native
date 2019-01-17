@@ -54,6 +54,7 @@ class KonanIrModuleDeserializer(
     val forwardDeclarations = mutableSetOf<IrSymbol>()
 
     var deserializedModuleDescriptor: ModuleDescriptor? = null
+    var deserializedModuleProtoSymbolTables = mutableMapOf<ModuleDescriptor, KonanIr.IrSymbolTable>()
     val resolvedForwardDeclarations = mutableMapOf<UniqIdKey, UniqIdKey>()
     val descriptorReferenceDeserializer = DescriptorReferenceDeserializer(currentModule, resolvedForwardDeclarations)
 
@@ -68,7 +69,7 @@ class KonanIrModuleDeserializer(
         }
     }
 
-    private fun referenceDeserializedSymbol(proto: KonanIr.IrSymbol, descriptor: DeclarationDescriptor?): IrSymbol = when (proto.kind) {
+    private fun referenceDeserializedSymbol(proto: KonanIr.IrSymbolData, descriptor: DeclarationDescriptor?): IrSymbol = when (proto.kind) {
         KonanIr.IrSymbolKind.ANONYMOUS_INIT_SYMBOL ->
             IrAnonymousInitializerSymbolImpl(
                 descriptor as ClassDescriptor?
@@ -125,6 +126,12 @@ class KonanIrModuleDeserializer(
     }
 
     override fun deserializeIrSymbol(proto: KonanIr.IrSymbol): IrSymbol {
+        val symbolData =
+            deserializedModuleProtoSymbolTables[deserializedModuleDescriptor]!!.getSymbols(proto.index)
+        return deserializeIrSymbolData(symbolData)
+    }
+
+    fun deserializeIrSymbolData(proto: KonanIr.IrSymbolData): IrSymbol {
         val key = proto.uniqId.uniqIdKey(deserializedModuleDescriptor!!)
         val topLevelKey = proto.topLevelUniqId.uniqIdKey(deserializedModuleDescriptor!!)
 
@@ -302,6 +309,7 @@ class KonanIrModuleDeserializer(
     fun deserializeIrModule(proto: KonanIr.IrModule, moduleDescriptor: ModuleDescriptor, deserializeAllDeclarations: Boolean): IrModuleFragment {
 
         deserializedModuleDescriptor = moduleDescriptor
+        deserializedModuleProtoSymbolTables.put(moduleDescriptor, proto.symbolTable)
 
         val files = proto.fileList.map {
             deserializeIrFile(it, moduleDescriptor, deserializeAllDeclarations)

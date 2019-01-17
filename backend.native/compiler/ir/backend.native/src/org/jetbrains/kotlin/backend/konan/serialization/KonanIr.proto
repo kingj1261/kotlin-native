@@ -48,6 +48,7 @@ message IrFile {
 message IrModule {
     required string name = 1;
     repeated IrFile file = 2;
+    required IrSymbolTable symbol_table = 3;
 }
 
 /* ------ IrSymbols --------------------------------------------- */
@@ -68,12 +69,20 @@ enum IrSymbolKind {
     RECEIVER_PARAMETER_SYMBOL = 12; // ReceiverParameterDescriptor rather than ValueParameterDescriptor.
 }
 
-message IrSymbol {
+message IrSymbolData {
     required IrSymbolKind kind = 1;
     required UniqId uniq_id = 2;
     required UniqId top_level_uniq_id = 3;
     optional string fqname = 4;
     optional DescriptorReference descriptor_reference = 5;
+}
+
+message IrSymbol {
+    required int32 index = 1;
+}
+
+message IrSymbolTable {
+    repeated IrSymbolData symbols = 1;
 }
 
 /* ------ IrTypes --------------------------------------------- */
@@ -368,6 +377,7 @@ enum IrTypeOperator {
     NOT_INSTANCEOF = 8;
     SAM_CONVERSION = 9;
 }
+
 
 message IrExpression {
     required IrOperation operation = 1;

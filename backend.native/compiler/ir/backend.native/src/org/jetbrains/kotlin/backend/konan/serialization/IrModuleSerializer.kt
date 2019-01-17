@@ -44,12 +44,17 @@ import org.jetbrains.kotlin.types.Variance
 
 internal class IrModuleSerializer(
     val logger: LoggingContext,
-    val declarationTable: DeclarationTable//,
+    val declarationTable: DeclarationTable
 ) {
 
     private val loopIndex = mutableMapOf<IrLoop, Int>()
     private var currentLoopIndex = 0
     val descriptorReferenceSerializer = DescriptorReferenceSerializer(declarationTable)
+
+    // The same symbol can be used multiple times in a module
+    // so use this index to store symbol data only once.
+    val protoSymbolMap = mutableMapOf<IrSymbol, Int>()
+    val protoSymbolArray = arrayListOf<KonanIr.IrSymbolData>()
 
     /* ------- IrSymbols -------------------------------------------------------- */
 
@@ -84,11 +89,12 @@ internal class IrModuleSerializer(
             TODO("Unexpected symbol kind: $symbol")
     }
 
-    fun serializeIrSymbol(symbol: IrSymbol): KonanIr.IrSymbol {
+    fun serializeIrSymbolData(symbol: IrSymbol): KonanIr.IrSymbolData {
+
         val declaration = symbol.owner as? IrDeclaration ?: error("Expected IrDeclaration: ${symbol.owner}")
 
-        val proto = KonanIr.IrSymbol.newBuilder()
-        proto.kind =  protoSymbolKind(symbol)
+        val proto = KonanIr.IrSymbolData.newBuilder()
+        proto.kind = protoSymbolKind(symbol)
 
         val uniqId =
             declarationTable.uniqIdByDeclaration(declaration)
@@ -102,6 +108,15 @@ internal class IrModuleSerializer(
             proto.setDescriptorReference(it)
         }
 
+        return proto.build()
+    }
+
+    fun serializeIrSymbol(symbol: IrSymbol): KonanIr.IrSymbol {
+        val proto = KonanIr.IrSymbol.newBuilder()
+        proto.index = protoSymbolMap.getOrPut(symbol) {
+            protoSymbolArray.add(serializeIrSymbolData(symbol))
+            protoSymbolArray.size - 1
+        }
         return proto.build()
     }
 
@@ -977,6 +992,9 @@ internal class IrModuleSerializer(
         module.files.forEach {
             proto.addFile(serializeIrFile(it))
         }
+        proto.symbolTable = KonanIr.IrSymbolTable.newBuilder()
+            .addAllSymbols(protoSymbolArray)
+            .build()
         return proto.build()
     }
 
