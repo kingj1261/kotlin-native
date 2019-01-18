@@ -703,7 +703,10 @@ class RunExternalTestGroup extends RunStandaloneKonanTest {
         def languageSettings = findLinesWithPrefixesRemoved(text, "// !LANGUAGE: ")
         if (languageSettings.size() != 0) {
             languageSettings.forEach { line ->
-                line.split(" ").toList().forEach { flags.add("-XXLanguage:$it") }
+                line.split(" ").toList().forEach {
+                    def s = it.replace('-DataClassInheritance', '+DataClassInheritance')
+                    flags.add("-XXLanguage:$s")
+                }
             }
         }
 
@@ -898,6 +901,8 @@ fun runTest() {
 
         if (excludeList.contains(fileName)) return false
 
+        if (findLinesWithPrefixesRemoved(text, "// WITH_REFLECT").size() != 0) return false
+
         def languageSettings = findLinesWithPrefixesRemoved(text, '// !LANGUAGE: ')
         if (!languageSettings.empty) {
             def settings = languageSettings.first()
@@ -932,6 +937,7 @@ fun runTest() {
             if (!findLinesWithPrefixesRemoved(text, "// JVM_TARGET:").isEmpty()) { return false }
             return true
         }
+
     }
 
     @Override
