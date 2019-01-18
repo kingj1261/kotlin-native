@@ -65,13 +65,6 @@ internal class KonanLower(val context: Context, val parentPhaser: PhaseManager) 
             irModule.files.forEach(InteropLoweringPart1(context)::lower)
         }
 
-        val symbolTable = context.ir.symbols.symbolTable
-
-        // do {
-        //      @Suppress("DEPRECATION")
-        //      irModule.replaceUnboundSymbols(context)
-        // } while (symbolTable.unboundClasses.isNotEmpty())
-
         irModule.patchDeclarationParents()
 
 //        validateIrModule(context, irModule) // Temporarily disabled until moving to new IR finished.

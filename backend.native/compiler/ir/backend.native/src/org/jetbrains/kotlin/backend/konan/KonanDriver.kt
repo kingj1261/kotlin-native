@@ -105,6 +105,10 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
     phaser.phase(KonanPhase.GEN_SYNTHETIC_FIELDS) {
         markBackingFields(context)
     }
+
+    // TODO: We copy default value expressions from expects to actuals before IR serialization,
+    // because the current infrastructure doesn't allow us to get them at deserialization stage.
+    // That equires some design and implementation work.
     phaser.phase(KonanPhase.COPY_DEFAULT_VALUES_TO_ACTUAL) {
         context.irModule!!.files.forEach(ExpectToActualDefaultValueCopier(context)::lower)
     }
