@@ -96,7 +96,7 @@ abstract class IrModuleDeserializer(
 
     fun deserializeSimpleType(proto: KonanIr.IrSimpleType): IrSimpleType {
         val arguments = proto.argumentList.map { deserializeIrTypeArgument(it) }
-        val annotations = deserializeAnnotations(proto.base.annotations)
+        val annotations = deserializeAnnotations(proto.annotations)
         val symbol = deserializeIrSymbol(proto.classifier) as? IrClassifierSymbol
             ?: error("could not convert sym to ClassifierSym ${proto.classifier.kind} ${proto.classifier.uniqId.index} ${proto.classifier.uniqId.isLocal}")
         logger.log { "deserializeSimpleType: symbol=$symbol" }
@@ -112,15 +112,13 @@ abstract class IrModuleDeserializer(
     }
 
     fun deserializeDynamicType(proto: KonanIr.IrDynamicType): IrDynamicType {
-        val annotations = deserializeAnnotations(proto.base.annotations)
-        val variance = deserializeIrTypeVariance(proto.base.variance)
-        return IrDynamicTypeImpl(null, annotations, variance)
+        val annotations = deserializeAnnotations(proto.annotations)
+        return IrDynamicTypeImpl(null, annotations, Variance.INVARIANT)
     }
 
     fun deserializeErrorType(proto: KonanIr.IrErrorType): IrErrorType {
-        val annotations = deserializeAnnotations(proto.base.annotations)
-        val variance = deserializeIrTypeVariance(proto.base.variance)
-        return IrErrorTypeImpl(null, annotations, variance)
+        val annotations = deserializeAnnotations(proto.annotations)
+        return IrErrorTypeImpl(null, annotations, Variance.INVARIANT)
     }
 
     fun deserializeIrType(proto: KonanIr.IrType): IrType {

@@ -776,7 +776,7 @@ internal class DeepCopyIrTreeWithDescriptors(val targetDescriptor: FunctionDescr
                     mapDeclarationOrigin(declaration.origin),
                     descriptor,
                     context.ir.translateErased(descriptor.type),
-                    declaration.initializer?.transform(this, null) ?: {println("INITIALIZER is null"); null}()
+                    declaration.initializer?.transform(this, null)
             ).apply {
                 transformAnnotations(declaration)
             }

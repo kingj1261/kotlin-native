@@ -1,5 +1,8 @@
 package org.jetbrains.kotlin.backend.konan.serialization
 
+import org.jetbrains.kotlin.backend.konan.irasdescriptors.isAccessor
+import org.jetbrains.kotlin.backend.konan.irasdescriptors.isGetter
+import org.jetbrains.kotlin.backend.konan.irasdescriptors.isSetter
 import org.jetbrains.kotlin.backend.konan.irasdescriptors.name
 import org.jetbrains.kotlin.backend.konan.llvm.isExported
 import org.jetbrains.kotlin.descriptors.*
@@ -36,7 +39,7 @@ class DescriptorReferenceSerializer(val declarationTable: DeclarationTable) {
             else -> return null
         }
 
-        val isAccessor = declaration is IrSimpleFunction && declaration.correspondingProperty != null
+        val isAccessor = declaration.isAccessor
         val isBackingField = declaration is IrField && declaration.correspondingProperty != null
         val isFakeOverride = declaration.origin == IrDeclarationOrigin.FAKE_OVERRIDE
         val isDefaultConstructor =
@@ -85,9 +88,9 @@ class DescriptorReferenceSerializer(val declarationTable: DeclarationTable) {
         }
 
         if (isAccessor) {
-            if (declaration.name.asString().startsWith("<get-"))
+            if (declaration.isGetter)
                 proto.setIsGetter(true)
-            else if (declaration.name.asString().startsWith("<set-"))
+            else if (declaration.isSetter)
                 proto.setIsSetter(true)
             else
                 error("A property accessor which is neither a getter, nor a setter: $descriptor")

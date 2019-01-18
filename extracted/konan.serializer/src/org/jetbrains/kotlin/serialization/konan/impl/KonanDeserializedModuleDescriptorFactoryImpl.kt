@@ -20,9 +20,6 @@ import org.jetbrains.kotlin.serialization.deserialization.*
 import org.jetbrains.kotlin.serialization.konan.*
 import org.jetbrains.kotlin.storage.StorageManager
 
-//TODO: could modules or libraries tell us that?
-val moduleToLibrary = mutableMapOf<ModuleDescriptor, KonanLibrary>()
-
 internal class KonanDeserializedModuleDescriptorFactoryImpl(
         override val descriptorFactory: KonanModuleDescriptorFactory,
         override val packageFragmentsFactory: KonanDeserializedPackageFragmentsFactory
@@ -72,8 +69,6 @@ internal class KonanDeserializedModuleDescriptorFactoryImpl(
                 deserializationConfiguration)
 
         moduleDescriptor.initialize(provider)
-
-        moduleToLibrary.put(moduleDescriptor, library)
 
         return moduleDescriptor
     }

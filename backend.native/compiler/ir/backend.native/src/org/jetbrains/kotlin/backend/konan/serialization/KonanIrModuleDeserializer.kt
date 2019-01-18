@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.konan.descriptors.findPackage
 import org.jetbrains.kotlin.backend.konan.descriptors.findTopLevelDescriptor
 import org.jetbrains.kotlin.backend.konan.descriptors.isForwardDeclarationModule
+import org.jetbrains.kotlin.backend.konan.descriptors.konanLibrary
 import org.jetbrains.kotlin.backend.konan.ir.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
@@ -38,7 +39,6 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedCallableMemberDescriptor
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedClassDescriptor
 import org.jetbrains.kotlin.serialization.konan.KonanSerializerProtocol
-import org.jetbrains.kotlin.serialization.konan.impl.moduleToLibrary
 
 class KonanIrModuleDeserializer(
     currentModule: ModuleDescriptor,
@@ -61,6 +61,7 @@ class KonanIrModuleDeserializer(
     init {
         var currentIndex = 0L
         builtIns.knownBuiltins.forEach {
+            require(it is IrFunction)
             deserializedSymbols.put(UniqIdKey(null, UniqId(currentIndex, isLocal = false)), it.symbol)
             assert(symbolTable.referenceSimpleFunction(it.descriptor) == it.symbol)
             currentIndex++
@@ -173,7 +174,7 @@ class KonanIrModuleDeserializer(
         return deserializeDeclaration(proto, reversedFileIndex[uniqIdKey]!!)
     }
     
-    private fun reader(moduleDescriptor: ModuleDescriptor, uniqId: UniqId) = moduleToLibrary[moduleDescriptor]!!.irDeclaration(uniqId.index, uniqId.isLocal)
+    private fun reader(moduleDescriptor: ModuleDescriptor, uniqId: UniqId) = moduleDescriptor.konanLibrary!!.irDeclaration(uniqId.index, uniqId.isLocal)
 
     private fun loadTopLevelDeclarationProto(uniqIdKey: UniqIdKey): KonanIr.IrDeclaration {
         val stream = reader(uniqIdKey.moduleOfOrigin!!, uniqIdKey.uniqId).codedInputStream
@@ -235,7 +236,7 @@ class KonanIrModuleDeserializer(
         }
 
         assert(symbol.isBound) {
-            println("findDeserializedDeclaration: symbol ${symbol} is unbound, descriptor = ${symbol.descriptor}, hash = ${symbol.descriptor.hashCode()}")
+            "findDeserializedDeclaration: symbol ${symbol} is unbound, descriptor = ${symbol.descriptor}, hash = ${symbol.descriptor.hashCode()}"
         }
 
         return symbol.owner as IrDeclaration

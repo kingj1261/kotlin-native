@@ -162,3 +162,9 @@ val IrDeclaration.parentDeclarationsWithSelf: Sequence<IrDeclaration>
     get() = generateSequence(this, { it.parent as? IrDeclaration })
 
 fun IrClass.companionObject() = this.declarations.singleOrNull {it is IrClass && it.isCompanion }
+
+val IrDeclaration.isGetter get() = this is IrSimpleFunction && this == this.correspondingProperty?.getter
+
+val IrDeclaration.isSetter get() = this is IrSimpleFunction && this == this.correspondingProperty?.setter
+
+val IrDeclaration.isAccessor get() = this.isGetter || this.isSetter

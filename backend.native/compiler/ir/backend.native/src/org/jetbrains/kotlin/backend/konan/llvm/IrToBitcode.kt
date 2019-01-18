@@ -601,7 +601,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
             return
         }
 
-        if (declaration.isObjCConstructor()) {
+        if (declaration.isObjCConstructor) {
             // Do not generate any ctors for external Objective-C classes.
             return
         }
@@ -1997,7 +1997,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
     private fun evaluateFunctionReference(expression: IrFunctionReference): LLVMValueRef {
         // TODO: consider creating separate IR element for pointer to function.
         assert (expression.type.getClass()?.descriptor == context.interopBuiltIns.cPointer) {
-            println("assert: ${expression.type.getClass()?.descriptor} == ${context.interopBuiltIns.cPointer}")
+            "assert: ${expression.type.getClass()?.descriptor} == ${context.interopBuiltIns.cPointer}"
         }
 
         assert (expression.getArguments().isEmpty())

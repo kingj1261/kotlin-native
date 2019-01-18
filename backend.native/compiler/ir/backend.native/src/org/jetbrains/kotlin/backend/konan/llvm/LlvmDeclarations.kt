@@ -203,7 +203,7 @@ private class DeclarationsGeneratorVisitor(override val context: Context) :
     }
 
     override fun visitClass(declaration: IrClass) {
-       this.classes[declaration] = createClassDeclarations(declaration)
+        this.classes[declaration] = createClassDeclarations(declaration)
 
         super.visitClass(declaration)
     }
@@ -393,7 +393,7 @@ private class DeclarationsGeneratorVisitor(override val context: Context) :
         val descriptor = declaration
         val llvmFunctionType = getLlvmFunctionType(descriptor)
 
-        if ((descriptor is ConstructorDescriptor && descriptor.isObjCConstructor())) {
+        if ((descriptor is ConstructorDescriptor && descriptor.isObjCConstructor)) {
             return
         }
 

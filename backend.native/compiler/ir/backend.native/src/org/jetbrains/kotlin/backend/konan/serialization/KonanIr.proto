@@ -43,7 +43,6 @@ message IrFile {
     required FileEntry file_entry = 2;
     // TODO: we need a better string management. See metadata serialization as an example.
     required string fq_name = 3;
-    //required IrDeclarationContainer declaration_container = 4;
 }
 
 message IrModule {
@@ -75,9 +74,6 @@ message IrSymbol {
     required UniqId top_level_uniq_id = 3;
     optional string fqname = 4;
     optional DescriptorReference descriptor_reference = 5;
-    //optional DescriptorReference top_level_descriptor_reference = 6;
-    //optional bool standalone_field = 5 [default = false];
-    //optional bool is_receiver = 6 [default = false];
 }
 
 /* ------ IrTypes --------------------------------------------- */
@@ -90,11 +86,6 @@ enum IrTypeVariance { // Should we import metadata variance, or better stay sepa
 
 message Annotations {
     repeated IrCall annotation = 1;
-}
-
-message IrTypeBase {
-    required Annotations annotations = 1;
-    required IrTypeVariance variance = 2 [default = INV];
 }
 
 message TypeArguments {
@@ -118,18 +109,18 @@ message IrTypeArgument {
 }
 
 message IrSimpleType {
-    required IrTypeBase base = 1;
+    required Annotations annotations = 1;
     required IrSymbol classifier = 2;
     required bool has_question_mark = 3;
     repeated IrTypeArgument argument = 4;
 }
 
 message IrDynamicType {
-    required IrTypeBase base = 1;
+    required Annotations annotations = 1;
 }
 
 message IrErrorType {
-    required IrTypeBase base = 1;
+    required Annotations annotations = 1;
 }
 
 message IrType {
@@ -413,7 +404,6 @@ message IrFunctionBase {
     required IrTypeParameterContainer type_parameters = 5;
     optional IrDeclaration dispatch_receiver = 6;
     optional IrDeclaration extension_receiver = 7;
-    //repeated IrValueParameter value_parameter = 8;
     repeated IrDeclaration value_parameter = 8;
     optional IrStatement body = 9;
     required IrType return_type = 10;

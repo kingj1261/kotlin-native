@@ -506,7 +506,7 @@ internal class InteropLoweringPart1(val context: Context) : IrBuildingTransforme
 
         constructedClass.parent.let { parent ->
             if (parent is IrClass && parent.isObjCClass() &&
-                    constructedClass == parent.companionObject()) {
+                    constructedClass.isCompanion) {
 
                 // Note: it is actually not used; getting values of such objects is handled by code generator
                 // in [FunctionGenerationContext.getObjectValue].

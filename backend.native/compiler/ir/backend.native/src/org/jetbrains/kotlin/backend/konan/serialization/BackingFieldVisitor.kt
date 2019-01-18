@@ -28,7 +28,7 @@ internal class BackingFieldVisitor(val context: Context) : IrElementVisitorVoid 
         }
         if (declaration.backingField == null || declaration.isDelegated) return
         assert(declaration.backingField!!.descriptor == declaration.descriptor) {
-            println("backing field descriptor mismatch: ${declaration.backingField!!.descriptor} != ${declaration.descriptor}")
+            "backing field descriptor mismatch: ${declaration.backingField!!.descriptor} != ${declaration.descriptor}"
         }
 
         context.ir.propertiesWithBackingFields.add(declaration.descriptor)

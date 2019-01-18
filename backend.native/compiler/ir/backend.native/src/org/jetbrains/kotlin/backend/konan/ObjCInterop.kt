@@ -40,7 +40,7 @@ private val objCBridgeFqName = interopPackageName.child(Name.identifier("ObjCBri
 
 @Deprecated("Use IR version rather than descriptor version")
 fun ClassDescriptor.isObjCClass(): Boolean =
-        this.getAllSuperClassifiers().any { it.fqNameSafe == objCObjectFqName } &&
+        this.getAllSuperClassifiers().any { it.fqNameSafe == objCObjectFqName } && // TODO: this is not cheap. Cache me!
                 this.containingDeclaration.fqNameSafe != interopPackageName
 
 fun KotlinType.isObjCObjectType(): Boolean =
@@ -226,7 +226,7 @@ class ObjCOverridabilityCondition : ExternalOverridabilityCondition {
 
 fun IrConstructor.objCConstructorIsDesignated(): Boolean {
     val annotation = this.annotations.findAnnotation(objCConstructorFqName)!!
-    for (index in 0..annotation.valueArgumentsCount - 1) {
+    for (index in 0 until annotation.valueArgumentsCount) {
         val parameter = annotation.symbol.owner.valueParameters[index]
         if (parameter.name == Name.identifier("designated")) {
             val actual = annotation.getValueArgument(index) as IrConst<kotlin.Boolean>
@@ -254,7 +254,7 @@ fun ConstructorDescriptor.getObjCInitMethod(): FunctionDescriptor? {
     }
 }
 
-fun IrConstructor.isObjCConstructor(): Boolean = this.descriptor.annotations.hasAnnotation(objCConstructorFqName)
+val IrConstructor.isObjCConstructor get() = this.descriptor.annotations.hasAnnotation(objCConstructorFqName)
 
 fun IrConstructor.getObjCInitMethod(): IrSimpleFunction? {
     return this.descriptor.annotations.findAnnotation(objCConstructorFqName)?.let {
@@ -265,7 +265,7 @@ fun IrConstructor.getObjCInitMethod(): IrSimpleFunction? {
     }
 }
 
-fun IrFunction.hasObjCFactoryAnnotation() = this.descriptor.annotations.hasAnnotation(objCFactoryFqName)
+val IrFunction.hasObjCFactoryAnnotation get() = this.descriptor.annotations.hasAnnotation(objCFactoryFqName)
 
 fun FunctionDescriptor.getObjCFactoryInitMethodInfo(): ObjCMethodInfo? {
     val factoryAnnotation = this.annotations.findAnnotation(objCFactoryFqName) ?: return null

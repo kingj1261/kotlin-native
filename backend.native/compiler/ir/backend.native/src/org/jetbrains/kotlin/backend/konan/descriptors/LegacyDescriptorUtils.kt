@@ -17,6 +17,8 @@ import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.builtins.konan.KonanBuiltIns
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.FunctionDescriptorImpl
+import org.jetbrains.kotlin.descriptors.konan.DeserializedKonanModuleOrigin
+import org.jetbrains.kotlin.descriptors.konan.konanModuleOrigin
 import org.jetbrains.kotlin.metadata.konan.KonanProtoBuf
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.DescriptorFactory
@@ -44,7 +46,7 @@ import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
  *
  * TODO: this method is actually a part of resolve and probably duplicates another one
  */
-internal fun <T : CallableMemberDescriptor> T.resolveFakeOverride(): T {
+internal fun <T : CallableMemberDescriptor> T.resolveFakeOverride(allowAbstract: Boolean = false): T {
     if (this.kind.isReal) {
         return this
     } else {
@@ -52,7 +54,7 @@ internal fun <T : CallableMemberDescriptor> T.resolveFakeOverride(): T {
         val filtered = OverridingUtil.filterOutOverridden(overridden)
         // TODO: is it correct to take first?
         @Suppress("UNCHECKED_CAST")
-        return filtered.first { it.modality != Modality.ABSTRACT } as T
+        return filtered.first { allowAbstract || it.modality != Modality.ABSTRACT } as T
     }
 }
 
@@ -284,3 +286,5 @@ fun CallableMemberDescriptor.externalSymbolOrThrow(): String? {
 
     throw Error("external function ${this} must have @TypedIntrinsic, @SymbolName or @ObjCMethod annotation")
 }
+
+val ModuleDescriptor.konanLibrary get() = (this.konanModuleOrigin as? DeserializedKonanModuleOrigin)?.library

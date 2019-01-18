@@ -24,7 +24,7 @@ class DescriptorReferenceDeserializer(val currentModule: ModuleDescriptor, val r
             Pair(clazz, clazz.unsubstitutedMemberScope.getContributedDescriptors() + clazz.getConstructors())
         }
 
-        if (proto.packageFqName.startsWith("cnames") || proto.packageFqName.startsWith("objcnames")) {
+        if (proto.packageFqName.startsWith("cnames.") || proto.packageFqName.startsWith("objcnames.")) {
             val descriptor =
                 currentModule.findClassAcrossModuleDependencies(ClassId(packageFqName, FqName(proto.name), false))!!
             if (!descriptor.fqNameUnsafe.asString().startsWith("cnames") && !descriptor.fqNameUnsafe.asString().startsWith(
@@ -68,16 +68,11 @@ class DescriptorReferenceDeserializer(val currentModule: ModuleDescriptor, val r
             val memberIndices = realMembers.map { it.getUniqId()?.index }.filterNotNull()
 
             if (memberIndices.contains(protoIndex)) {
-
-                if (member is PropertyDescriptor) {
-                    if (proto.isSetter) return member.setter!!// ?: return@forEach
-                    if (proto.isGetter) return member.getter!!
-                    if (proto.isBackingField) return member //
-                    return member
-                } else {
-                    return member
+                return when {
+                    member is PropertyDescriptor && proto.isSetter -> member.setter!!
+                    member is PropertyDescriptor && proto.isGetter -> member.getter!!
+                    else -> member
                 }
-
             }
         }
         error("Could not find serialized descriptor for index: ${proto.uniqId.index} ${proto.packageFqName},${proto.classFqName},${proto.name}")

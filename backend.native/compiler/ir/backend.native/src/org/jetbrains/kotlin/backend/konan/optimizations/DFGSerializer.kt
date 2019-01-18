@@ -947,7 +947,7 @@ internal object DFGSerializer {
         val publicFunctionsMap = mutableMapOf<Long, DataFlowIR.FunctionSymbol.Public>()
         val functions = mutableMapOf<DataFlowIR.FunctionSymbol, DataFlowIR.Function>()
         val specifics = context.config.configuration.get(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS)!!
-        val storageManager = LockBasedStorageManager("deserializer-$startPrivateFunIndex-$startPrivateFunIndex")
+        val storageManager = LockBasedStorageManager("deserializer-$startPrivateTypeIndex-$startPrivateFunIndex")
         context.librariesWithDependencies.forEach { library ->
             val libraryDataFlowGraph = library.dataFlowGraph
 

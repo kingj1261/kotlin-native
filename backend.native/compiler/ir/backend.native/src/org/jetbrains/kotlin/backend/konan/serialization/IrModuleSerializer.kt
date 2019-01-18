@@ -107,6 +107,8 @@ internal class IrModuleSerializer(
 
     /* ------- IrTypes ---------------------------------------------------------- */
 
+    // TODO: we, probably, need a type table.
+
     private fun serializeTypeArguments(call: IrMemberAccessExpression): KonanIr.TypeArguments {
         val proto = KonanIr.TypeArguments.newBuilder()
         for (i in 0 until call.typeArgumentsCount) {
@@ -126,15 +128,6 @@ internal class IrModuleSerializer(
         annotations.forEach {
             proto.addAnnotation(serializeCall(it))
         }
-        return proto.build()
-    }
-
-    fun serializeIrTypeBase(type: IrType): KonanIr.IrTypeBase {
-        val typeBase = type as IrTypeBase // TODO: get rid of the cast.
-        val proto = KonanIr.IrTypeBase.newBuilder()
-            .setVariance(serializeIrTypeVariance(typeBase.variance))
-            .setAnnotations(serializeAnnotations(typeBase.annotations))
-
         return proto.build()
     }
 
@@ -158,7 +151,7 @@ internal class IrModuleSerializer(
 
     fun serializeSimpleType(type: IrSimpleType): KonanIr.IrSimpleType {
         val proto = KonanIr.IrSimpleType.newBuilder()
-            .setBase(serializeIrTypeBase(type))
+            .setAnnotations(serializeAnnotations(type.annotations))
             .setClassifier(serializeIrSymbol(type.classifier))
             .setHasQuestionMark(type.hasQuestionMark)
         type.arguments.forEach {
@@ -168,11 +161,11 @@ internal class IrModuleSerializer(
     }
 
     fun serializeDynamicType(type: IrDynamicType) = KonanIr.IrDynamicType.newBuilder()
-        .setBase(serializeIrTypeBase(type))
+        .setAnnotations(serializeAnnotations(type.annotations))
         .build()
 
     fun serializeErrorType(type: IrErrorType) = KonanIr.IrErrorType.newBuilder()
-        .setBase(serializeIrTypeBase(type))
+        .setAnnotations(serializeAnnotations(type.annotations))
         .build()
 
     private fun serializeIrType(type: IrType): KonanIr.IrType {

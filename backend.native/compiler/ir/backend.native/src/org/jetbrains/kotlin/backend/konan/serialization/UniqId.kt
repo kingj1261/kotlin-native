@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.*
 import org.jetbrains.kotlin.metadata.KonanIr
 import org.jetbrains.kotlin.metadata.konan.KonanProtoBuf
+import org.jetbrains.kotlin.protobuf.GeneratedMessageLite
 
 // This is an abstract uniqIdIndex any serialized IR declarations gets.
 // It is either isLocal and then just gets and ordinary number within its module.
@@ -25,7 +26,7 @@ data class UniqId (
 // It has moduleDescriptor specified for isLocal=true uniqIds.
 data class UniqIdKey private constructor(val uniqId: UniqId, val moduleDescriptor: ModuleDescriptor?) {
     constructor(moduleDescriptor: ModuleDescriptor?, uniqId: UniqId)
-            : this(uniqId, if (uniqId.isLocal) moduleDescriptor else null)
+            : this(uniqId, if (uniqId.isLocal) moduleDescriptor!! else null)
 }
 
 internal val IrDeclaration.uniqIdIndex: Long
@@ -41,11 +42,14 @@ fun KonanIr.UniqId.uniqId(): UniqId = UniqId(this.index, this.isLocal)
 fun KonanIr.UniqId.uniqIdKey(moduleDescriptor: ModuleDescriptor) =
     UniqIdKey(moduleDescriptor, this.uniqId())
 
+fun <T, M:GeneratedMessageLite.ExtendableMessage<M>> M.tryGetExtension(extension: GeneratedMessageLite.GeneratedExtension<M, T>)
+        = if (this.hasExtension(extension)) this.getExtension<T>(extension) else null
+
 fun DeclarationDescriptor.getUniqId(): KonanProtoBuf.DescriptorUniqId? = when (this) {
-    is DeserializedClassDescriptor -> if (this.classProto.hasExtension(KonanProtoBuf.classUniqId)) this.classProto.getExtension(KonanProtoBuf.classUniqId) else null
-    is DeserializedSimpleFunctionDescriptor -> if (this.proto.hasExtension(KonanProtoBuf.functionUniqId)) this.proto.getExtension(KonanProtoBuf.functionUniqId) else null
-    is DeserializedPropertyDescriptor -> if (this.proto.hasExtension(KonanProtoBuf.propertyUniqId)) this.proto.getExtension(KonanProtoBuf.propertyUniqId) else null
-    is DeserializedClassConstructorDescriptor -> if (this.proto.hasExtension(KonanProtoBuf.constructorUniqId)) this.proto.getExtension(KonanProtoBuf.constructorUniqId) else null
+    is DeserializedClassDescriptor              -> this.classProto.tryGetExtension(KonanProtoBuf.classUniqId)
+    is DeserializedSimpleFunctionDescriptor     -> this.proto.tryGetExtension(KonanProtoBuf.functionUniqId)
+    is DeserializedPropertyDescriptor           -> this.proto.tryGetExtension(KonanProtoBuf.propertyUniqId)
+    is DeserializedClassConstructorDescriptor   -> this.proto.tryGetExtension(KonanProtoBuf.constructorUniqId)
     else -> null
 }
 

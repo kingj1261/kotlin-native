@@ -163,7 +163,7 @@ private val IrFunction.signature: String
         // and
         // kotlinx.cinterop.ObjCClassOf<T>.create(string: kotlin.String): T defined in platform.Foundation in file Foundation.kt
 
-            val argName = if (this.hasObjCFactoryAnnotation() || this.isObjCClassMethod()) "${it.name}:" else ""
+            val argName = if (this.hasObjCFactoryAnnotation || this.isObjCClassMethod()) "${it.name}:" else ""
             "$argName${typeToHashString(it.type)}${if (it.isVararg) "_VarArg" else ""}"
         }.joinToString(";")
         // Distinguish value types and references - it's needed for calling virtual methods through bridges.
@@ -182,7 +182,7 @@ private val IrFunction.signature: String
 internal val IrFunction.functionName: String
     get() {
         with(this.original) { // basic support for generics
-            (if (this is IrConstructor && this.isObjCConstructor()) this.getObjCInitMethod() else this)?.getObjCMethodInfo()?.let {
+            (if (this is IrConstructor && this.isObjCConstructor) this.getObjCInitMethod() else this)?.getObjCMethodInfo()?.let {
                 return buildString {
                     if (extensionReceiverParameter != null) {
                         append(extensionReceiverParameter!!.type.getClass()!!.name)
@@ -191,7 +191,7 @@ internal val IrFunction.functionName: String
 
                     append("objc:")
                     append(it.selector)
-                    if (this@with is IrConstructor && this@with.isObjCConstructor()) append("#Constructor")
+                    if (this@with is IrConstructor && this@with.isObjCConstructor) append("#Constructor")
 
                     // We happen to have the clashing combinations such as
                     //@ObjCMethod("issueChallengeToPlayers:message:", "objcKniBridge1165")

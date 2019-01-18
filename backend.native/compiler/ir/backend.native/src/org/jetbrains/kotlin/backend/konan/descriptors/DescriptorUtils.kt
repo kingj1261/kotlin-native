@@ -40,7 +40,7 @@ internal val ClassDescriptor.implementedInterfaces: List<ClassDescriptor>
  *
  * TODO: this method is actually a part of resolve and probably duplicates another one
  */
-internal fun IrSimpleFunction.resolveFakeOverride(): IrSimpleFunction {
+internal fun IrSimpleFunction.resolveFakeOverride(allowAbstract: Boolean = false): IrSimpleFunction {
     if (this.isReal) {
         return this
     }
@@ -75,7 +75,7 @@ internal fun IrSimpleFunction.resolveFakeOverride(): IrSimpleFunction {
         realSupers.toList().forEach { excludeOverridden(it) }
     }
 
-    return realSupers.first { it.modality != Modality.ABSTRACT }
+    return realSupers.first { allowAbstract || it.modality != Modality.ABSTRACT }
 }
 
 // TODO: don't forget to remove descriptor access here.
@@ -239,8 +239,13 @@ val IrDeclaration.isPropertyField get() =
 val IrDeclaration.isTopLevelDeclaration get() =
     parent !is IrDeclaration && !this.isPropertyAccessor && !this.isPropertyField
 
-fun IrDeclaration.findTopLevelDeclaration(): IrDeclaration =
-    if (this.isTopLevelDeclaration) this
-    else if (this.isPropertyAccessor) (this as IrSimpleFunction).correspondingProperty!!.findTopLevelDeclaration()
-    else if (this.isPropertyField) (this as IrField).correspondingProperty!!.findTopLevelDeclaration()
-    else (this.parent as IrDeclaration).findTopLevelDeclaration()
+fun IrDeclaration.findTopLevelDeclaration(): IrDeclaration = when {
+    this.isTopLevelDeclaration ->
+        this
+    this.isPropertyAccessor ->
+        (this as IrSimpleFunction).correspondingProperty!!.findTopLevelDeclaration()
+    this.isPropertyField ->
+        (this as IrField).correspondingProperty!!.findTopLevelDeclaration()
+    else ->
+        (this.parent as IrDeclaration).findTopLevelDeclaration()
+}

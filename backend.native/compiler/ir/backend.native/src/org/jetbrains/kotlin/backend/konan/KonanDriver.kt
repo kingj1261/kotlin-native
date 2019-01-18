@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.konan
 import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.konan.descriptors.isForwardDeclarationModule
+import org.jetbrains.kotlin.backend.konan.descriptors.konanLibrary
 import org.jetbrains.kotlin.backend.konan.ir.KonanSymbols
 import org.jetbrains.kotlin.backend.konan.ir.ModuleIndex
 import org.jetbrains.kotlin.backend.konan.llvm.emitLLVM
@@ -20,7 +21,6 @@ import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.psi2ir.Psi2IrConfiguration
 import org.jetbrains.kotlin.psi2ir.Psi2IrTranslator
-import org.jetbrains.kotlin.serialization.konan.impl.moduleToLibrary
 
 fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironment) {
 
@@ -77,7 +77,7 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
         )
 
         val irModules = context.moduleDescriptor.allDependencyModules.map {
-            val library = moduleToLibrary[it]
+            val library = it.konanLibrary
             if (library == null) {
                 return@map null
             }

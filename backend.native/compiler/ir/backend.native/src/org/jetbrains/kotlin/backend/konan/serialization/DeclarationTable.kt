@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 
 fun <K, V> MutableMap<K, V>.putOnce(k:K, v: V): Unit {
     assert(!this.containsKey(k) || this[k] == v) {
-        println("adding $v for $k, but it is already ${this[k]} for $k")
+        "adding $v for $k, but it is already ${this[k]} for $k"
     }
     this.put(k, v)
 }
@@ -58,13 +58,6 @@ class DeclarationTable(val builtIns: IrBuiltIns, val descriptorTable: Descriptor
     }
 }
 
-// This is what we pre-populate the declaration table with.
-val IrBuiltIns.knownBuiltins: List<IrSimpleFunction> // TODO: why do we have this list??? We need the complete list!
-    get() = (lessFunByOperandType.values +
-            lessOrEqualFunByOperandType.values +
-            greaterOrEqualFunByOperandType.values +
-            greaterFunByOperandType.values +
-            ieee754equalsFunByOperandType.values +
-            eqeqeqFun + eqeqFun +
-            throwNpeFun + booleanNotFun + noWhenBranchMatchedExceptionFun + enumValueOfFun +
-            dataClassArrayMemberToStringFun + dataClassArrayMemberHashCodeFun)
+// This is what we pre-populate tables with
+val IrBuiltIns.knownBuiltins
+    get() = irBuiltInsExternalPackageFragment.declarations

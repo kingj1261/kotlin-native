@@ -163,6 +163,7 @@ internal class FunctionInlining(val context: Context): IrElementTransformerWithC
         }
         data.value = data.value or callee.second
 
+        // TODO: do we still need this Ref<Boolean> mechanism?
         val childIsBad = Ref(inlineFunctions[functionDescriptor] ?: false)
         callee.first.transformChildren(this, childIsBad)                            // Process recursive inline.
         inlineFunctions[functionDescriptor] = childIsBad.value
@@ -175,6 +176,7 @@ internal class FunctionInlining(val context: Context): IrElementTransformerWithC
         return inliner.inline()
     }
 
+    // TODO: do we really need this function anymore?
     private fun getFunctionDeclaration(descriptor: FunctionDescriptor): Pair<IrFunction, Boolean>? =
             when {
                 descriptor.isBuiltInIntercepted(context.config.configuration.languageVersionSettings) ->

@@ -536,9 +536,7 @@ private fun getArrayListClassDescriptor(context: Context): ClassDescriptor {
     return classifier as ClassDescriptor
 }
 
-
 fun IrElement.render() = accept(RenderIrElementVisitor(), null)
-
 
 fun IrType.render() =
         originalKotlinType?.let {

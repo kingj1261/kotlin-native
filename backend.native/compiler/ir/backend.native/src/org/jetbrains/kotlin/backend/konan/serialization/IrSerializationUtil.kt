@@ -16,10 +16,9 @@
 
 package org.jetbrains.kotlin.backend.konan.serialization
 
+import org.jetbrains.kotlin.backend.konan.descriptors.resolveFakeOverride
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
-//import org.jetbrains.kotlin.ir.util.toKotlinType as utilToKotlinType
-import org.jetbrains.kotlin.backend.konan.irasdescriptors.isReal
 import org.jetbrains.kotlin.resolve.OverridingUtil
 
 // TODO: move me somewhere
@@ -29,43 +28,7 @@ import org.jetbrains.kotlin.resolve.OverridingUtil
  *
  * TODO: this method is actually a part of resolve and probably duplicates another one
  */
-internal fun IrSimpleFunction.resolveFakeOverrideMaybeAbstract(): IrSimpleFunction {
-    if (this.isReal) {
-        return this
-    }
-
-    val visited = mutableSetOf<IrSimpleFunction>()
-    val realSupers = mutableSetOf<IrSimpleFunction>()
-
-    fun findRealSupers(function: IrSimpleFunction) {
-        if (function in visited) { return }
-        visited += function
-        if (function.isReal) {
-            realSupers += function
-        } else {
-            function.overriddenSymbols.forEach { findRealSupers(it.owner) }
-        }
-    }
-
-    findRealSupers(this)
-
-    if (realSupers.size > 1) {
-        visited.clear()
-
-        fun excludeOverridden(function: IrSimpleFunction) {
-            if (function in visited) return
-            visited += function
-            function.overriddenSymbols.forEach {
-                realSupers.remove(it.owner)
-                excludeOverridden(it.owner)
-            }
-        }
-
-        realSupers.toList().forEach { excludeOverridden(it) }
-    }
-
-    return realSupers.first() /*{ it.modality != Modality.ABSTRACT } */
-}
+internal fun IrSimpleFunction.resolveFakeOverrideMaybeAbstract() = this.resolveFakeOverride(allowAbstract = true)
 
 internal fun IrProperty.resolveFakeOverrideMaybeAbstract() = this.getter!!.resolveFakeOverrideMaybeAbstract().correspondingProperty!!
 
